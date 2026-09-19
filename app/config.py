@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,8 +10,8 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
     DEBUG: bool = False
-    ADMIN_PIN: str = "1234"
-    SECRET_KEY: str = "restoque-secret-key-nicaragua-pos-2026"
+    ADMIN_PIN: str = Field(min_length=4)
+    SECRET_KEY: str = Field(min_length=32)
     RESTIQUE_API_KEY: str | None = None
     API_KEY: str | None = None
 

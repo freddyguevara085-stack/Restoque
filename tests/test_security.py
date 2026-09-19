@@ -55,6 +55,39 @@ def test_protected_routes_require_admin_pin(client):
     assert client.get("/api/reportes/excel").status_code == 401
 
 
+def test_pin_does_not_authorize_operations(client):
+    # El PIN no debe equivaler a una sesión: ni en Authorization ni en cabecera
+    assert client.post("/api/pacas/", json={
+        "descripcion": "PIN", "costo": 1.0, "peso_lbs": 1.0, "categorias": []
+    }, headers={"Authorization": f"Bearer {settings.ADMIN_PIN}"}).status_code == 401
+
+    assert client.post("/api/pacas/", json={
+        "descripcion": "PIN", "costo": 1.0, "peso_lbs": 1.0, "categorias": []
+    }, headers={"X-Admin-PIN": settings.ADMIN_PIN}).status_code == 401
+
+
+def test_admin_token_authorizes_operations(client):
+    token = client.post("/api/auth/verify-pin", json={"pin": settings.ADMIN_PIN}).json()["token"]
+    res = client.post("/api/pacas/", json={
+        "descripcion": "Con sesión", "costo": 1.0, "peso_lbs": 1.0, "categorias": []
+    }, headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 201
+
+
+def test_expired_token_rejected(client):
+    import hashlib
+    import hmac
+    ts = int(__import__("time").time()) - 13 * 3600
+    sig = hmac.new(
+        settings.SECRET_KEY.encode(),
+        (settings.ADMIN_PIN + str(ts)).encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    assert client.get("/api/reportes/dashboard", headers={
+        "Authorization": f"Bearer {ts}.{sig}"
+    }).status_code == 401
+
+
 def test_docs_disabled_in_production():
     # When DEBUG=false, docs_url is None and accessing /docs returns 404
     prod_app = FastAPI(docs_url=None, redoc_url=None)

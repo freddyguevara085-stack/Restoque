@@ -8,7 +8,10 @@ from starlette.testclient import TestClient
 tmp_db_file = os.path.join(tempfile.gettempdir(), "test_restoque_conftest.db")
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{tmp_db_file}"
 os.environ["ADMIN_PIN"] = "1234"
+os.environ["SECRET_KEY"] = "test-secret-key-00000000000000000000"
 os.environ["DEBUG"] = "true"
+os.environ["RESTIQUE_API_KEY"] = "restoque-prod-key-2026-super-secure"
+os.environ["API_KEY"] = "restoque-prod-key-2026-super-secure"
 
 from app.database import Base, engine
 from app.main import app
@@ -27,7 +30,7 @@ def reset_database():
 
 @pytest.fixture
 def client():
-    with TestClient(app) as test_client:
+    with TestClient(app, headers={"X-API-Key": "restoque-prod-key-2026-super-secure"}) as test_client:
         yield test_client
 
 
@@ -35,4 +38,4 @@ def client():
 def admin_headers(client):
     res = client.post("/api/auth/verify-pin", json={"pin": "1234"})
     token = res.json()["token"]
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "X-API-Key": "restoque-prod-key-2026-super-secure"}

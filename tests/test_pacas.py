@@ -11,6 +11,7 @@ def test_create_paca_persists_quantities(client, admin_headers):
     assert res.status_code == 201
     data = res.json()
     assert data["descripcion"] == "Paca Mixta Verano"
+    assert data["estado"] == "activa"
     assert len(data["categorias"]) == 2
     for cat in data["categorias"]:
         assert cat["cantidad_disponible"] == cat["cantidad_total"]

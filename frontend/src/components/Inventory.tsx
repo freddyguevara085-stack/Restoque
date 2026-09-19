@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Package, Tag, Sparkles, Lock } from 'lucide-react';
+import { Plus, Trash2, Package, Tag, Sparkles, Lock, CheckCircle2 } from 'lucide-react';
 import type { PacaOut } from '../types';
 
 interface InventoryProps {
@@ -19,9 +19,9 @@ const labelClass =
   'block text-xs font-semibold tracking-wider text-gray-500 uppercase mb-1.5';
 
 const PRESET_CATEGORIES = [
-  { nombre: 'Premium', precio: 150 },
-  { nombre: 'Regular', precio: 80 },
-  { nombre: 'Económica', precio: 40 },
+  { nombre: 'Camisa', precio: 120 },
+  { nombre: 'Pantalón', precio: 180 },
+  { nombre: 'Vestido', precio: 150 },
 ];
 
 export function Inventory({
@@ -37,7 +37,7 @@ export function Inventory({
   const [cost, setCost] = useState('');
   const [weight, setWeight] = useState('');
   const [includeCategoriesNow, setIncludeCategoriesNow] = useState(true);
-  const [categories, setCategories] = useState([{ name: 'Premium', quantity: 0, pricePerUnit: 150 }]);
+  const [categories, setCategories] = useState([{ name: 'Camisa', quantity: 0, pricePerUnit: 120 }]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [newPacaError, setNewPacaError] = useState<string | null>(null);
@@ -49,12 +49,38 @@ export function Inventory({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [showNewPacaForm, setShowNewPacaForm] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'todas' | 'activas' | 'recuperadas' | 'agotadas'>('todas');
+
+  const getPacaStatus = (paca: PacaOut): 'activa' | 'recuperada' | 'agotada' => {
+    if (paca.estado) return paca.estado;
+    const totalDisp = paca.categorias.reduce((sum, c) => sum + c.cantidad_disponible, 0);
+    if (paca.categorias.length > 0 && totalDisp === 0) return 'agotada';
+    const recaudado = paca.ingresos_recaudados ?? 0;
+    if (paca.costo > 0 && recaudado >= paca.costo) return 'recuperada';
+    return 'activa';
+  };
+
+  const counts = {
+    todas: pacas.length,
+    activas: pacas.filter(p => getPacaStatus(p) === 'activa').length,
+    recuperadas: pacas.filter(p => getPacaStatus(p) === 'recuperada').length,
+    agotadas: pacas.filter(p => getPacaStatus(p) === 'agotada').length,
+  };
+
+  const filteredPacas = pacas.filter(p => {
+    if (filterStatus === 'todas') return true;
+    const st = getPacaStatus(p);
+    if (filterStatus === 'activas') return st === 'activa';
+    if (filterStatus === 'recuperadas') return st === 'recuperada';
+    if (filterStatus === 'agotadas') return st === 'agotada';
+    return true;
+  });
 
   // Clasificación en paca existente
   const [activePacaId, setActivePacaId] = useState<number | null>(null);
-  const [addCatName, setAddCatName] = useState('Premium');
+  const [addCatName, setAddCatName] = useState('Camisa');
   const [addCatQty, setAddCatQty] = useState('');
-  const [addCatPrice, setAddCatPrice] = useState('150');
+  const [addCatPrice, setAddCatPrice] = useState('120');
   const [addingPrendas, setAddingPrendas] = useState(false);
 
   const addCategory = () => {
@@ -98,7 +124,7 @@ export function Inventory({
       setDescription('');
       setCost('');
       setWeight('');
-      setCategories([{ name: 'Premium', quantity: 0, pricePerUnit: 150 }]);
+      setCategories([{ name: 'Camisa', quantity: 0, pricePerUnit: 120 }]);
       setShowNewPacaForm(false);
     } catch (err: any) {
       setNewPacaError(err?.message || 'Error al registrar la paca. Verifica los datos.');
@@ -252,7 +278,7 @@ export function Inventory({
                   onChange={e => setIncludeCategoriesNow(e.target.checked)}
                   className="rounded border-gray-300 text-black focus:ring-black"
                 />
-                <span className="font-medium">Ingresar categorías de prendas ahora mismo</span>
+                <span className="font-medium">Ingresar tipos de prendas ahora mismo</span>
               </label>
               {!includeCategoriesNow && (
                 <p className="text-xs text-gray-500 mt-1">
@@ -269,7 +295,7 @@ export function Inventory({
                   <h3 className="text-xs sm:text-sm font-semibold text-gray-900">
                     Prendas Contadas Iniciales
                   </h3>
-                  <p className="text-xs text-gray-500">¿Cuántas prendas salieron de cada precio?</p>
+                    <p className="text-xs text-gray-500">Indica qué prendas salieron y a qué precio se venderán.</p>
                 </div>
                 <button
                   type="button"
@@ -283,45 +309,98 @@ export function Inventory({
 
               <div className="space-y-3">
                 {categories.map((cat, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-200/70">
-                      <input
-                        type="text"
-                        value={cat.name}
-                        onChange={e => updateCategory(i, 'name', e.target.value)}
-                        placeholder="Categoría (ej: Premium)"
-                        className={inputClass}
-                      />
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        value={cat.quantity || ''}
-                        onChange={e => updateCategory(i, 'quantity', parseInt(e.target.value) || 0)}
-                        placeholder="Cantidad de prendas"
-                        min="0"
-                        className={`${inputClass} tabular-nums`}
-                      />
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        value={cat.pricePerUnit || ''}
-                        onChange={e => updateCategory(i, 'pricePerUnit', parseFloat(e.target.value) || 0)}
-                        placeholder="Precio de venta C$"
-                        min="0"
-                        step="0.01"
-                        className={`${inputClass} tabular-nums`}
-                      />
+                  <div key={i} className="bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-200/70 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo de prenda</label>
+                          <input
+                            type="text"
+                            value={cat.name}
+                            onChange={e => updateCategory(i, 'name', e.target.value)}
+                            placeholder="Ej: Camisa manga corta"
+                            className={inputClass}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Precio de venta (C$)</label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={cat.pricePerUnit || ''}
+                            onChange={e => updateCategory(i, 'pricePerUnit', parseFloat(e.target.value) || 0)}
+                            placeholder="Precio C$"
+                            min="0"
+                            step="0.01"
+                            className={`${inputClass} tabular-nums`}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeCategory(i)}
+                        disabled={categories.length <= 1}
+                        className="mt-4 p-2.5 rounded-lg text-gray-400 hover:text-red-600 disabled:opacity-20 cursor-pointer transition-colors"
+                        title="Eliminar fila"
+                        aria-label="Eliminar fila de categoría"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeCategory(i)}
-                      disabled={categories.length <= 1}
-                      className="mt-2.5 p-3 rounded-lg text-gray-400 hover:text-red-600 disabled:opacity-20 cursor-pointer"
-                      title="Eliminar fila"
-                      aria-label="Eliminar fila de categoría"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Cantidad de prendas</label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex items-center rounded-xl border border-gray-300 bg-white overflow-hidden shadow-xs">
+                          <button
+                            type="button"
+                            onClick={() => updateCategory(i, 'quantity', Math.max(0, (cat.quantity || 0) - 1))}
+                            className="min-w-[44px] min-h-[44px] w-[44px] h-[44px] flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 text-lg font-bold transition-colors cursor-pointer select-none"
+                            aria-label="Restar 1 prenda"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={cat.quantity || ''}
+                            onChange={e => updateCategory(i, 'quantity', Math.max(0, parseInt(e.target.value) || 0))}
+                            placeholder="0"
+                            className="w-16 h-[44px] text-center font-bold text-gray-900 bg-transparent focus:outline-none tabular-nums text-base"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => updateCategory(i, 'quantity', (cat.quantity || 0) + 1)}
+                            className="min-w-[44px] min-h-[44px] w-[44px] h-[44px] flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 text-lg font-bold transition-colors cursor-pointer select-none"
+                            aria-label="Sumar 1 prenda"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {[5, 10, 25].map(step => (
+                            <button
+                              key={step}
+                              type="button"
+                              onClick={() => updateCategory(i, 'quantity', (cat.quantity || 0) + step)}
+                              className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-gray-300 hover:bg-gray-100 active:scale-95 text-gray-800 transition-all cursor-pointer select-none shadow-xs"
+                            >
+                              +{step}
+                            </button>
+                          ))}
+                          {cat.quantity > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => updateCategory(i, 'quantity', 0)}
+                              className="min-h-[44px] px-2 text-xs text-gray-500 hover:text-red-600 transition-colors cursor-pointer"
+                            >
+                              Limpiar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -353,14 +432,51 @@ export function Inventory({
         </form>
       )}
 
-      {/* SECCIÓN 2: HISTORIAL Y DESGLOSE POR PACA */}
+      {/* SECCIÓN 2: INVENTARIO Y DESGLOSE POR PACA */}
       <div>
         <div className="mb-4">
-          <h2 className="text-xl font-bold tracking-tight text-gray-900">Historial y Desglose por Paca</h2>
+          <h2 className="text-xl font-bold tracking-tight text-gray-900">Inventario de prendas</h2>
           <p className="text-xs sm:text-sm text-gray-500">
-            Revisa cuántas prendas salieron de cada fardo, el costo unitario promedio y las ganancias estimadas.
+            Revisa las prendas disponibles, su origen y el rendimiento de cada paca.
           </p>
         </div>
+
+        {/* Filtros horizontales swipeables con contadores */}
+        {pacas.length > 0 && (
+          <div className="mb-5 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
+            {(
+              [
+                { id: 'todas', label: 'Todas', count: counts.todas },
+                { id: 'activas', label: 'Activas', count: counts.activas },
+                { id: 'recuperadas', label: 'Recuperadas', count: counts.recuperadas },
+                { id: 'agotadas', label: 'Agotadas', count: counts.agotadas },
+              ] as const
+            ).map(f => {
+              const isSelected = filterStatus === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFilterStatus(f.id)}
+                  className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all cursor-pointer min-h-[44px] ${
+                    isSelected
+                      ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                  }`}
+                >
+                  <span>{f.label}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {f.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="space-y-6">
           {loading && pacas.length === 0 ? (
@@ -378,7 +494,8 @@ export function Inventory({
               ))}
             </div>
           ) : (
-            pacas.map(paca => {
+            filteredPacas.map(paca => {
+              const status = getPacaStatus(paca);
               const totalPrendas = paca.categorias.reduce((sum, c) => sum + c.cantidad_total, 0);
               const totalDisponibles = paca.categorias.reduce((sum, c) => sum + c.cantidad_disponible, 0);
               const totalVendidas = totalPrendas - totalDisponibles;
@@ -387,6 +504,10 @@ export function Inventory({
               const margenProyectado = paca.costo > 0 ? (gananciaProyectada / paca.costo) * 100 : 0;
               const costoUnitarioPromedio = totalPrendas > 0 ? paca.costo / totalPrendas : 0;
               const isAddingHere = activePacaId === paca.id;
+
+              const recaudado = paca.ingresos_recaudados ?? 0;
+              const gananciaRealizada = Math.max(0, recaudado - paca.costo);
+              const porcentajeRecuperado = paca.porcentaje_recuperado ?? (paca.costo > 0 ? (recaudado / paca.costo) * 100 : 0);
 
               return (
                 <div key={paca.id} className="bg-white rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden">
@@ -397,7 +518,7 @@ export function Inventory({
                         <span className="font-bold block sm:inline">
                           ¿Eliminar la paca «{paca.descripcion}»?
                         </span>{' '}
-                        <span>Prendas y categorías se eliminarán. No se puede deshacer.</span>
+                        <span>Las prendas de esta paca se eliminarán. No se puede deshacer.</span>
                         {deleteError && deleteError.id === paca.id && (
                           <p className="text-red-700 font-bold mt-1">{deleteError.message}</p>
                         )}
@@ -433,50 +554,99 @@ export function Inventory({
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-gray-900 text-white">
-                            Paca #{paca.id}
-                          </span>
-                          <h3 className="font-bold text-base sm:text-lg text-gray-900">{paca.descripcion}</h3>
+                    <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/60">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-2 py-0.5 rounded text-xs font-bold bg-gray-900 text-white">
+                              Paca #{paca.id}
+                            </span>
+                            <h3 className="font-bold text-base sm:text-lg text-gray-900">{paca.descripcion}</h3>
+                            {status === 'recuperada' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                <CheckCircle2 size={12} className="text-emerald-700" />
+                                <span>✓ Inversión Recuperada</span>
+                                {gananciaRealizada > 0 && (
+                                  <span className="text-emerald-700 font-extrabold ml-0.5">
+                                    (+C$ {gananciaRealizada.toLocaleString('es-NI', { minimumFractionDigits: 0 })})
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                            {status === 'activa' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                                <span>Activa</span>
+                              </span>
+                            )}
+                            {status === 'agotada' && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                                Agotada
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5 tabular-nums">
+                            Costo inversión: <span className="font-semibold text-gray-800">C$ {paca.costo.toLocaleString('es-NI', { minimumFractionDigits: 2 })}</span> · {paca.peso_lbs} lbs · {new Date(paca.created_at).toLocaleDateString()}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5 tabular-nums">
-                          Costo inversión: <span className="font-semibold text-gray-800">C$ {paca.costo.toLocaleString('es-NI', { minimumFractionDigits: 2 })}</span> · {paca.peso_lbs} lbs · {new Date(paca.created_at).toLocaleDateString()}
-                        </p>
+
+                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!isAdmin && onRequestUnlock) {
+                                onRequestUnlock();
+                                return;
+                              }
+                              setActivePacaId(isAddingHere ? null : paca.id);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer shadow-sm min-h-[44px]"
+                          >
+                            {isAdmin ? <Plus size={14} /> : <Lock size={13} />}
+                            {isAddingHere ? 'Cerrar' : 'Clasificar Prendas'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!isAdmin && onRequestUnlock) {
+                                onRequestUnlock();
+                                return;
+                              }
+                              setDeletingPacaId(paca.id);
+                            }}
+                            aria-label={`Eliminar paca ${paca.descripcion}`}
+                            className="p-3 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            title={isAdmin ? `Eliminar paca ${paca.descripcion}` : 'Requiere PIN de Administrador'}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 self-start sm:self-auto">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!isAdmin && onRequestUnlock) {
-                              onRequestUnlock();
-                              return;
-                            }
-                            setActivePacaId(isAddingHere ? null : paca.id);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer shadow-sm"
-                        >
-                          {isAdmin ? <Plus size={14} /> : <Lock size={13} />}
-                          {isAddingHere ? 'Cerrar' : 'Clasificar Prendas'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!isAdmin && onRequestUnlock) {
-                              onRequestUnlock();
-                              return;
-                            }
-                            setDeletingPacaId(paca.id);
-                          }}
-                          aria-label={`Eliminar paca ${paca.descripcion}`}
-                          className="p-3 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                          title={isAdmin ? `Eliminar paca ${paca.descripcion}` : 'Requiere PIN de Administrador'}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      {/* Barra de progreso de amortización / recuperación de inversión */}
+                      {paca.costo > 0 && (
+                        <div className="mt-3 pt-2.5 border-t border-gray-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                          <div className="flex flex-wrap items-center gap-1 text-gray-600">
+                            <span className="font-medium">Recuperación de costo:</span>
+                            <span className="font-bold text-gray-900 tabular-nums">
+                              C$ {recaudado.toLocaleString('es-NI', { minimumFractionDigits: 2 })}
+                            </span>
+                            <span className="text-gray-400">/</span>
+                            <span className="text-gray-500 tabular-nums">C$ {paca.costo.toLocaleString('es-NI', { minimumFractionDigits: 2 })}</span>
+                            <span className={`font-extrabold ml-1 ${status === 'recuperada' ? 'text-emerald-700' : 'text-blue-700'}`}>
+                              ({porcentajeRecuperado.toFixed(0)}%)
+                            </span>
+                          </div>
+                          <div className="w-full sm:w-48 h-2 bg-gray-200 rounded-full overflow-hidden shrink-0 mt-1 sm:mt-0">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                status === 'recuperada' ? 'bg-emerald-500' : 'bg-blue-600'
+                              }`}
+                              style={{ width: `${Math.min(100, porcentajeRecuperado)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -515,8 +685,8 @@ export function Inventory({
                   <div className="p-5 bg-blue-50/50 border-b border-blue-100">
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles size={16} className="text-blue-600" />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900">
-                        Clasificar prendas sacadas de esta paca
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                        Agregar prendas de esta paca
                       </h4>
                     </div>
 
@@ -551,63 +721,119 @@ export function Inventory({
                       </div>
                     )}
 
-                    <form onSubmit={e => handleAddPrendasToPaca(paca.id, e)} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                      <div>
-                        <label className={labelClass}>Categoría</label>
-                        <input
-                          type="text"
-                          value={addCatName}
-                          onChange={e => setAddCatName(e.target.value)}
-                          placeholder="Ej: Premium"
-                          className={inputClass}
-                          required
-                        />
+                    <form onSubmit={e => handleAddPrendasToPaca(paca.id, e)} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className={labelClass}>Tipo de prenda</label>
+                          <input
+                            type="text"
+                            value={addCatName}
+                            onChange={e => setAddCatName(e.target.value)}
+                            placeholder="Ej: Camisa manga corta"
+                            className={inputClass}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className={labelClass}>Precio Venta Unitario (C$)</label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={addCatPrice}
+                            onChange={e => setAddCatPrice(e.target.value)}
+                            placeholder="Ej: 150"
+                            min="1"
+                            step="0.01"
+                            className={`${inputClass} tabular-nums`}
+                            required
+                          />
+                        </div>
                       </div>
+
                       <div>
                         <label className={labelClass}>Prendas que salieron</label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          value={addCatQty}
-                          onChange={e => setAddCatQty(e.target.value)}
-                          placeholder="Ej: 15"
-                          min="1"
-                          className={`${inputClass} tabular-nums`}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className={labelClass}>Precio Venta Unitario (C$)</label>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          value={addCatPrice}
-                          onChange={e => setAddCatPrice(e.target.value)}
-                          placeholder="Ej: 150"
-                          min="1"
-                          step="0.01"
-                          className={`${inputClass} tabular-nums`}
-                          required
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          type="submit"
-                          disabled={addingPrendas}
-                          className="w-full h-[42px] flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50"
-                        >
-                          <Plus size={14} />
-                          {addingPrendas ? 'Sumando...' : 'Sumar a la Paca'}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="inline-flex items-center rounded-xl border border-gray-300 bg-white overflow-hidden shadow-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cur = parseInt(addCatQty) || 0;
+                                const next = Math.max(0, cur - 1);
+                                setAddCatQty(next > 0 ? next.toString() : '');
+                              }}
+                              className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 text-lg font-bold transition-colors cursor-pointer select-none"
+                              aria-label="Restar 1 prenda"
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={addCatQty}
+                              onChange={e => setAddCatQty(e.target.value)}
+                              placeholder="0"
+                              className="w-20 h-[44px] text-center font-bold text-gray-900 bg-transparent focus:outline-none tabular-nums text-base"
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cur = parseInt(addCatQty) || 0;
+                                setAddCatQty((cur + 1).toString());
+                              }}
+                              className="w-[44px] h-[44px] min-w-[44px] min-h-[44px] flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-800 text-lg font-bold transition-colors cursor-pointer select-none"
+                              aria-label="Sumar 1 prenda"
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {/* Quick increment chips */}
+                          <div className="flex items-center gap-1.5">
+                            {[5, 10, 25].map(step => (
+                              <button
+                                key={step}
+                                type="button"
+                                onClick={() => {
+                                  const cur = parseInt(addCatQty) || 0;
+                                  setAddCatQty((cur + step).toString());
+                                }}
+                                className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-gray-300 hover:bg-gray-100 active:scale-95 text-gray-800 transition-all cursor-pointer select-none shadow-xs"
+                              >
+                                +{step}
+                              </button>
+                            ))}
+                            {addCatQty && (
+                              <button
+                                type="button"
+                                onClick={() => setAddCatQty('')}
+                                className="min-h-[44px] px-2.5 text-xs text-gray-500 hover:text-red-600 cursor-pointer"
+                              >
+                                Limpiar
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="ml-auto sm:self-end w-full sm:w-auto mt-2 sm:mt-0">
+                            <button
+                              type="submit"
+                              disabled={addingPrendas || !addCatQty || parseInt(addCatQty) <= 0}
+                              className="w-full sm:w-auto min-h-[44px] px-5 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-xs transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
+                            >
+                              <Plus size={16} />
+                              {addingPrendas ? 'Guardando...' : 'Agregar prendas'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </form>
                   </div>
                 )}
 
-                {/* Tabla de categorías y precios de esta paca */}
+                {/* Tabla de prendas y precios de esta paca */}
                 <div className="p-5">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-1.5">
-                    <Tag size={14} /> Desglose de prendas por precio
+                    <Tag size={14} /> Prendas y precios de venta
                   </h4>
 
                   {paca.categorias.length === 0 ? (
@@ -623,7 +849,7 @@ export function Inventory({
                     </div>
                   ) : (
                     <>
-                      {/* VISTA MÓVIL: Tarjetas limpias y legibles por categoría */}
+                      {/* VISTA MÓVIL: Tarjetas limpias y legibles por prenda */}
                       <div className="space-y-3 sm:hidden">
                         {paca.categorias.map(cat => {
                           const vendidas = cat.cantidad_total - cat.cantidad_disponible;
@@ -682,7 +908,7 @@ export function Inventory({
                         <table className="w-full text-left text-xs min-w-[520px]">
                           <thead>
                             <tr className="border-b border-gray-100 text-gray-600 font-semibold uppercase">
-                              <th className="pb-2">Categoría</th>
+                              <th className="pb-2">Prenda</th>
                               <th className="pb-2 text-center">Salieron (Total)</th>
                               <th className="pb-2 text-center">En Tienda</th>
                               <th className="pb-2 text-center">Vendidas</th>
@@ -718,6 +944,20 @@ export function Inventory({
               </div>
             );
           }))}
+
+          {filteredPacas.length === 0 && pacas.length > 0 && (
+            <div className="bg-white rounded-2xl p-10 border border-gray-200 text-center shadow-xs">
+              <Package size={36} className="mx-auto text-gray-400 mb-2" />
+              <p className="text-gray-700 text-sm font-semibold">No se encontraron pacas con el filtro «{filterStatus}».</p>
+              <button
+                type="button"
+                onClick={() => setFilterStatus('todas')}
+                className="mt-3 px-4 py-2 text-xs font-semibold text-white bg-gray-900 rounded-xl hover:bg-black transition-colors cursor-pointer"
+              >
+                Ver todas las pacas ({pacas.length})
+              </button>
+            </div>
+          )}
 
           {!loading && pacas.length === 0 && (
             <div className="bg-white rounded-2xl p-10 border border-gray-200 text-center shadow-xs">

@@ -35,6 +35,20 @@ def test_dashboard_metrics_aggregation(client, admin_headers):
     assert data["prendas_disponibles"] == 8
     assert data["ganancia_neta"] == 600.0 - 2000.0
 
+    # Nuevas métricas comerciales Fase 3.1
+    assert data["valor_inventario_remanente"] == 8 * 300.0
+    assert data["margen_bruto_realizado"] == 600.0 - (2 * 200.0)
+    assert len(data["actividad_reciente"]) >= 1
+    assert data["actividad_reciente"][0]["total"] == 600.0
+    assert "2x Zapatos" in data["actividad_reciente"][0]["resumen"]
+
+    assert len(data["roi_pacas"]) == 1
+    roi = data["roi_pacas"][0]
+    assert roi["ingresos_recaudados"] == 600.0
+    assert roi["porcentaje_recuperado"] == 30.0
+    assert roi["estado"] == "en_proceso"
+
+
 
 def test_excel_export_and_formula_injection(client, admin_headers):
     # Seed a paca with formula injection payload in categoria name

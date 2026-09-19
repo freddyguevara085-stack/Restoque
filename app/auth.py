@@ -7,12 +7,35 @@ from fastapi import Header, HTTPException, status
 from app.config import settings
 
 
+import time
+
+# IP -> (attempts, lockout_until)
+_failed_attempts: dict[str, tuple[int, float]] = {}
+
+def check_rate_limit(ip: str) -> int:
+    now = time.time()
+    attempts, lockout = _failed_attempts.get(ip, (0, 0.0))
+    if now < lockout:
+        raise HTTPException(status_code=429, detail="Demasiados intentos. Intente más tarde.")
+    return attempts
+
+def record_failed_attempt(ip: str, attempts: int):
+    attempts += 1
+    lockout = time.time() + 300 if attempts >= 5 else 0.0
+    _failed_attempts[ip] = (attempts, lockout)
+
+def clear_attempts(ip: str):
+    _failed_attempts.pop(ip, None)
+
+
 def get_admin_token() -> str:
-    return hmac.new(
+    ts = str(int(time.time()))
+    sig = hmac.new(
         settings.SECRET_KEY.encode(),
-        settings.ADMIN_PIN.encode(),
+        (settings.ADMIN_PIN + ts).encode(),
         hashlib.sha256,
     ).hexdigest()
+    return f"{ts}.{sig}"
 
 
 def verify_pin(pin: str) -> bool:
@@ -20,23 +43,31 @@ def verify_pin(pin: str) -> bool:
 
 
 def is_valid_token(token: str) -> bool:
-    return hmac.compare_digest(token.strip(), get_admin_token())
+    try:
+        ts_str, sig = token.strip().split(".", 1)
+        ts = int(ts_str)
+        if time.time() - ts > 12 * 3600:
+            return False
+        expected_sig = hmac.new(
+            settings.SECRET_KEY.encode(),
+            (settings.ADMIN_PIN + ts_str).encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        return hmac.compare_digest(sig, expected_sig)
+    except Exception:
+        return False
 
 
 async def require_admin(
     authorization: Annotated[str | None, Header()] = None,
-    x_admin_pin: Annotated[str | None, Header()] = None,
 ):
-    if x_admin_pin and verify_pin(x_admin_pin):
-        return True
-
     if authorization:
-        token = authorization.replace("Bearer ", "").strip()
-        if is_valid_token(token) or verify_pin(token):
+        scheme, sep, token = authorization.partition(" ")
+        if sep and scheme.strip().lower() == "bearer" and token.strip() and is_valid_token(token):
             return True
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="PIN de administrador requerido para esta acción.",
+        detail="Token de administrador requerido para esta acción.",
         headers={"WWW-Authenticate": "Bearer"},
     )

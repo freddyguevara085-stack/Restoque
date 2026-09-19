@@ -36,5 +36,8 @@ async def add_prendas(paca_id: int, payload: PrendasAdd, db: DB):
 
 @router.delete("/{paca_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
 async def delete_paca(paca_id: int, db: DB):
-    if not await crud.delete_paca(db, paca_id):
-        raise HTTPException(status_code=404, detail="Paca no encontrada")
+    try:
+        if not await crud.delete_paca(db, paca_id):
+            raise HTTPException(status_code=404, detail="Paca no encontrada")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -102,6 +102,7 @@ export const api = {
       headers: getAuthHeaders(),
     });
     if (r.status === 401) {
+      this.logoutAdmin();
       return null;
     }
     if (!r.ok) {
@@ -157,9 +158,18 @@ export function useStore() {
       setPacas(pacasData);
 
       if (api.isAdminAuthenticated()) {
-        const dashboardData = await api.getDashboard();
-        setDashboard(dashboardData);
-        setIsAdmin(true);
+        try {
+          const dashboardData = await api.getDashboard();
+          if (dashboardData) {
+            setDashboard(dashboardData);
+            setIsAdmin(true);
+          } else {
+            setDashboard(null);
+            setIsAdmin(false);
+          }
+        } catch (e: any) {
+          setError(e.message || 'Error al cargar métricas');
+        }
       } else {
         setDashboard(null);
         setIsAdmin(false);

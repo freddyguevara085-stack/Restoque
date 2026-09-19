@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, status
+from app.auth import require_admin
+from fastapi import APIRouter, HTTPException, status, Depends
 
 from app.database import DB
 from app.schemas import VentaCreate, VentaOut
@@ -24,3 +25,10 @@ async def list_ventas(
     hasta: datetime | None = None,
 ):
     return await crud.get_ventas(db, desde, hasta)
+
+
+@router.delete("/{venta_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+async def delete_venta(venta_id: int, db: DB):
+    success = await crud.delete_venta(db, venta_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")

@@ -5,6 +5,7 @@ import {
   decrementCartItem,
   removeFromCart,
   calculateCartTotal,
+  calculateChange,
   parseHashString,
   serializeHash,
   type CartItem,
@@ -35,7 +36,7 @@ describe('POS Cart Math & State Logic', () => {
     expect(updated).toHaveLength(1);
     expect(updated[0]).toEqual({
       paca_categoria_id: 101,
-      nombre: 'Paca #1 - Vestidos Premium',
+      nombre: 'Vestidos Premium',
       precio: 150,
       cantidad: 1,
       cantidad_disponible: 3,
@@ -101,6 +102,29 @@ describe('POS Cart Math & State Logic', () => {
 
     // Total = (2 * 150) + (3 * 80) = 300 + 240 = 540
     expect(calculateCartTotal(cart)).toBe(540);
+  });
+
+  describe('Change Calculator (Calculadora de Vuelto)', () => {
+    it('exact payment returns zero change and is sufficient', () => {
+      const result = calculateChange(350, 350);
+      expect(result.change).toBe(0);
+      expect(result.isSufficient).toBe(true);
+      expect(result.difference).toBe(0);
+    });
+
+    it('overpayment calculates correct positive change', () => {
+      const result = calculateChange(350, 500);
+      expect(result.change).toBe(150);
+      expect(result.isSufficient).toBe(true);
+      expect(result.difference).toBe(150);
+    });
+
+    it('underpayment returns 0 change and marks isSufficient false with difference needed', () => {
+      const result = calculateChange(350, 200);
+      expect(result.change).toBe(0);
+      expect(result.isSufficient).toBe(false);
+      expect(result.difference).toBe(150);
+    });
   });
 });
 

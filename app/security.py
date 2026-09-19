@@ -14,8 +14,10 @@ async def require_api_key(
 ) -> None:
     expected_key = settings.api_key
     if not expected_key:
-        logger.warning("RESTIQUE_API_KEY is unset; API key authentication is skipped (dev default).")
-        return
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="API Key no configurada en el servidor (RESTIQUE_API_KEY o API_KEY requerida).",
+        )
 
     if not x_api_key or not hmac.compare_digest(x_api_key.strip(), expected_key.strip()):
         raise HTTPException(

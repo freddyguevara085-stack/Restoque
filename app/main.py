@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from sqlalchemy import text
-from app.database import Base, engine
+from app.database import Base, engine, is_sqlite
 from app.routers import inventory, ventas, reportes, auth
 from app.security import require_api_key
 
@@ -16,7 +16,8 @@ from app.security import require_api_key
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
-        await conn.execute(text("PRAGMA journal_mode=WAL;"))
+        if is_sqlite:
+            await conn.execute(text("PRAGMA journal_mode=WAL;"))
         await conn.run_sync(Base.metadata.create_all)
     yield
     await engine.dispose()
@@ -67,8 +68,8 @@ app.include_router(inventory.router, prefix="/api", dependencies=api_deps)
 app.include_router(ventas.router, prefix="/api", dependencies=api_deps)
 app.include_router(reportes.router, prefix="/api", dependencies=api_deps)
 
-frontend_dist = os.path.join("frontend", "dist")
-
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+frontend_dist = os.path.join(base_dir, "frontend", "dist")
 if os.path.isdir(frontend_dist):
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
 

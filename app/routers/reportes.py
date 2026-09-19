@@ -1,4 +1,5 @@
 from io import BytesIO
+from decimal import Decimal
 
 import openpyxl
 from fastapi import APIRouter, Depends
@@ -52,11 +53,11 @@ async def download_excel(db: DB):
     ws2.append(["Paca", "Costo", "Total Prendas", "Vendidas", "Disponibles", "Ingresos", "Ganancia"])
 
     # Pre-index venta items by categoria id
-    ingresos_por_cat: dict[int, float] = {}
+    ingresos_por_cat: dict[int, Decimal] = {}
     for venta in ventas:
         for item in venta.items:
             ingresos_por_cat[item.paca_categoria_id] = (
-                ingresos_por_cat.get(item.paca_categoria_id, 0.0) + item.subtotal
+                ingresos_por_cat.get(item.paca_categoria_id, Decimal("0.00")) + item.subtotal
             )
 
     for paca in pacas:

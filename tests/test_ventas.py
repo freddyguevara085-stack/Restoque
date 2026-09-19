@@ -98,3 +98,39 @@ def test_venta_unknown_category_and_validation(client):
         "items": [{"paca_categoria_id": 1, "cantidad": 0}]
     })
     assert res_zero.status_code == 422
+
+
+def test_delete_venta_restores_stock(client, admin_headers):
+    # Seed paca with categories
+    p_res = client.post("/api/pacas/", json={
+        "descripcion": "Paca para anular",
+        "costo": 1000.0,
+        "peso_lbs": 20.0,
+        "categorias": [
+            {"nombre": "Camisas", "cantidad_total": 5, "precio_venta": 120.0},
+        ]
+    }, headers=admin_headers)
+    paca_id = p_res.json()["id"]
+    cat_id = p_res.json()["categorias"][0]["id"]
+
+    # Sell 2 camisas
+    venta_res = client.post("/api/ventas/", json={
+        "items": [{"paca_categoria_id": cat_id, "cantidad": 2}]
+    })
+    venta_id = venta_res.json()["id"]
+
+    # Verify stock decrements
+    paca_check = client.get(f"/api/pacas/{paca_id}").json()
+    assert paca_check["categorias"][0]["cantidad_disponible"] == 3
+
+    # Delete venta
+    del_res = client.delete(f"/api/ventas/{venta_id}", headers=admin_headers)
+    assert del_res.status_code == 204
+
+    # Verify stock is restored
+    paca_check_restored = client.get(f"/api/pacas/{paca_id}").json()
+    assert paca_check_restored["categorias"][0]["cantidad_disponible"] == 5
+
+    # Verify venta is gone
+    del_res_again = client.delete(f"/api/ventas/{venta_id}", headers=admin_headers)
+    assert del_res_again.status_code == 404

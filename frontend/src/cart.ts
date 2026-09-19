@@ -30,7 +30,7 @@ export function addToCart(cart: CartItem[], category: AddableCategory): CartItem
     ...cart,
     {
       paca_categoria_id: category.id,
-      nombre: `${category.paca_desc} - ${category.nombre}`,
+      nombre: category.nombre,
       precio: category.precio_venta,
       cantidad: 1,
       cantidad_disponible: category.cantidad_disponible,
@@ -63,6 +63,21 @@ export function removeFromCart(cart: CartItem[], catId: number): CartItem[] {
 
 export function calculateCartTotal(cart: CartItem[]): number {
   return cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
+}
+
+export interface ChangeResult {
+  change: number;
+  isSufficient: boolean;
+  difference: number;
+}
+
+export function calculateChange(total: number, paid: number): ChangeResult {
+  const diff = paid - total;
+  return {
+    change: Math.max(0, diff),
+    isSufficient: diff >= 0,
+    difference: Math.abs(diff),
+  };
 }
 
 export const VALID_VIEWS: View[] = ['dashboard', 'inventory', 'pos', 'reportes'];
