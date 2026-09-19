@@ -1,6 +1,41 @@
+<div align="center">
+
+<img src="frontend/public/restoque-logo.png" alt="Restoque" width="360" />
+
 # Restoque
 
-Restoque es una aplicación web progresiva (PWA) para administrar inventario y ventas de ropa usada. El sistema conserva la paca como origen de la inversión, pero permite trabajar diariamente con prendas agrupadas por tipo, calidad y precio.
+**Inventario y punto de venta para ropa usada, desde la paca hasta la prenda.**
+
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111111)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PWA](https://img.shields.io/badge/PWA-Instalable-5A0FC8?logo=pwa&logoColor=white)](#pwa)
+
+</div>
+
+---
+
+## El problema
+
+Cuando se compra ropa por pacas, la inversión se registra como un solo lote, pero la venta ocurre prenda por prenda. Restoque conecta ambas partes: conserva la paca como origen financiero y convierte su contenido en un catálogo sencillo de prendas, cantidades y precios.
+
+## La solución
+
+Restoque permite clasificar, vender y medir el rendimiento de cada paca desde una interfaz táctil pensada para el uso diario en una tienda pequeña. La persona que vende trabaja con prendas; el sistema se encarga de existencias, ingresos, recuperación de inversión y reportes.
+
+## Modelo de inventario
+
+Una línea representa prendas equivalentes:
+
+```text
+Paca: Ropa americana septiembre
+    Camisa buena calidad  · C$ 200 · 10 disponibles
+    Camisa regular        · C$ 120 · 8 disponibles
+    Pantalón buena calidad · C$ 250 · 5 disponibles
+```
+
+La paca permanece como origen interno. En el punto de venta se muestra principalmente el tipo de prenda, su precio y el stock disponible.
 
 ## Funcionalidades
 
