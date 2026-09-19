@@ -179,6 +179,70 @@ uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 
 Los servicios gratuitos con sistema de archivos efímero no deben usarse con `restoque.db` como almacenamiento principal. Si se utiliza un proveedor con suspensión por inactividad, la primera carga puede tardar; la base de datos debe permanecer en almacenamiento persistente.
 
+### Oracle Cloud Always Free
+
+Para una instalación sin pago mensual, Oracle Cloud Always Free puede alojar la aplicación en una VM Linux. La disponibilidad de una VM gratuita depende de la capacidad de la región y Oracle puede pedir verificación de identidad o tarjeta.
+
+La configuración preparada en `deploy/oracle/` usa:
+
+- SQLite en `/var/lib/restoque/restoque.db`.
+- `systemd` para iniciar y reiniciar FastAPI.
+- Caddy como proxy HTTPS.
+- Un backup SQLite diario conservado durante 14 días.
+
+#### Instalación resumida
+
+En la VM Ubuntu, instala Python, Node.js, SQLite, Git y Caddy. Después clona el repositorio:
+
+```bash
+sudo mkdir -p /opt/restoque /var/lib/restoque /etc/restoque
+sudo useradd --system --home /opt/restoque --shell /usr/sbin/nologin restoque || true
+sudo chown -R restoque:restoque /opt/restoque /var/lib/restoque
+git clone https://github.com/freddyguevara085-stack/Restoque.git /opt/restoque
+cd /opt/restoque
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cd frontend && npm install && npm run build
+```
+
+Copia la configuración y edita los secretos:
+
+```bash
+sudo cp deploy/oracle/restoque.env.example /etc/restoque/restoque.env
+sudo nano /etc/restoque/restoque.env
+sudo chmod 600 /etc/restoque/restoque.env
+```
+
+Instala el servicio y los backups:
+
+```bash
+sudo cp deploy/oracle/restoque.service /etc/systemd/system/
+sudo cp deploy/oracle/backup-restoque.sh /usr/local/sbin/
+sudo cp deploy/oracle/restoque-backup.service /etc/systemd/system/
+sudo cp deploy/oracle/restoque-backup.timer /etc/systemd/system/
+sudo chmod 750 /usr/local/sbin/backup-restoque.sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now restoque.service restoque-backup.timer
+```
+
+Para HTTPS, usa un dominio gratuito como DuckDNS apuntando a la IP pública de la VM. Copia `deploy/oracle/Caddyfile.example` a `/etc/caddy/Caddyfile`, reemplaza el dominio y ejecuta:
+
+```bash
+sudo systemctl reload caddy
+```
+
+Abre los puertos TCP `80` y `443` en las reglas de red de Oracle y en el firewall de Ubuntu. No expongas el puerto `8000` públicamente.
+
+Comprueba el servicio y el backup:
+
+```bash
+systemctl status restoque.service
+systemctl list-timers restoque-backup.timer
+curl -I https://tu-dominio.example
+```
+
+Esta opción evita el sueño de Render y no requiere pagar un VPS, pero requiere administrar la VM y conservar copias del backup fuera de Oracle.
+
 ## PWA
 
 Después de desplegar con HTTPS:
@@ -214,6 +278,7 @@ app/routers/         Endpoints de autenticación, inventario, ventas y reportes
 frontend/src/        Aplicación React y PWA
 frontend/public/     Manifest y recursos públicos
 tests/               Pruebas del backend
+deploy/oracle/       Servicio systemd, Caddy y backups para Oracle Cloud
 migrate_money.py     Migración de importes FLOAT a NUMERIC
 requirements.txt     Dependencias de producción
 requirements-dev.txt Dependencias de pruebas

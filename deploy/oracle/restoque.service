@@ -1,0 +1,16 @@
+[Unit]
+Description=Restoque FastAPI service
+After=network.target
+
+[Service]
+Type=simple
+User=restoque
+Group=restoque
+WorkingDirectory=/opt/restoque
+EnvironmentFile=/etc/restoque/restoque.env
+ExecStart=/opt/restoque/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

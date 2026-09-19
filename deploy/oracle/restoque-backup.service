@@ -1,0 +1,6 @@
+[Unit]
+Description=Backup Restoque SQLite database
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/backup-restoque.sh
