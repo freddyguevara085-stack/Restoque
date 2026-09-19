@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1A1A1A;
+  --color-secondary: #4A4A4A;
+  --color-accent: #0066FF;
+  --color-success: #22C55E;
+  --color-warning: #EAB308;
+  --color-error: #EF4444;
+  --color-surface: #F8F9FA;
+  --color-border: #E5E7EB;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-primary antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .spring {
+    transition: transform 150ms ease, opacity 150ms ease;
+  }
+  .hover-lift {
+    transition: box-shadow 150ms ease;
+  }
+  .hover-lift:hover {
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .spring, .hover-lift, .transition-all, .transition-colors, .transition-transform {
+    transition: none !important;
+    transform: none !important;
+  }
+}
